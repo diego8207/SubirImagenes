@@ -257,7 +257,7 @@ public class MainActivity extends AppCompatActivity {
         }
         return false;
     }
-
+    //Actualizacion
     private void serverUpdate(){
         if (file.exists())new ServerUpdate().execute();
     }
