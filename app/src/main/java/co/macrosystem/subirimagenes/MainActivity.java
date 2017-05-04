@@ -32,25 +32,18 @@ import android.widget.Toast;
 
 import java.io.File;
 import java.io.IOException;
-import java.io.UnsupportedEncodingException;
-import java.util.ArrayList;
-import java.util.List;
 
 import org.apache.http.HttpVersion;
-import org.apache.http.NameValuePair;
 import org.apache.http.client.ClientProtocolException;
 import org.apache.http.client.HttpClient;
-import org.apache.http.client.entity.UrlEncodedFormEntity;
 import org.apache.http.client.methods.HttpPost;
+import org.apache.http.conn.HttpHostConnectException;
 import org.apache.http.entity.mime.MultipartEntity;
 import org.apache.http.entity.mime.content.ContentBody;
 import org.apache.http.entity.mime.content.FileBody;
 import org.apache.http.impl.client.DefaultHttpClient;
-import org.apache.http.message.BasicNameValuePair;
 import org.apache.http.params.CoreProtocolPNames;
 
-import static android.R.attr.path;
-import static android.R.attr.permission;
 
 
 public class MainActivity extends AppCompatActivity {
@@ -65,6 +58,8 @@ public class MainActivity extends AppCompatActivity {
     private String foto;
     private File file;
 
+    private int ErrorConexionServidor = 0;
+
     private static final int REQUEST_EXTERNAL_STORAGE = 1;
     private static String[] PERMISSIONS_STORAGE = {
             Manifest.permission.READ_EXTERNAL_STORAGE,
@@ -75,9 +70,6 @@ public class MainActivity extends AppCompatActivity {
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
-
-
-
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
         Toolbar toolbar = (Toolbar) findViewById(R.id.toolbar);
@@ -106,7 +98,14 @@ public class MainActivity extends AppCompatActivity {
         upload.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-                if (file.exists()) new ServerUpdate().execute();
+                try {
+                    if (file.exists()){
+                        new ServerUpload().execute();
+                    }
+                }catch (NullPointerException e){
+                    Snackbar.make(v, "No hay Imagen para enviar al servidor", Snackbar.LENGTH_LONG).setAction("Action", null).show();
+                }
+
                 //Snackbar.make(v, "Enviando Imagen Al Servidor ...", Snackbar.LENGTH_LONG).setAction("Action", null).show();
             }
         });
@@ -225,67 +224,21 @@ public class MainActivity extends AppCompatActivity {
         } catch (ClientProtocolException e) {
             // TODO Auto-generated catch block
             e.printStackTrace();
+        } catch (HttpHostConnectException e){
+            //Toast.makeText(this, "No es posible comunicarse con el servidor", Toast.LENGTH_SHORT).show();
+
         } catch (IOException e) {
             // TODO Auto-generated catch block
             e.printStackTrace();
         }
     }
 
-    private boolean onInsert(){
-        HttpClient httpclient;
-        List<NameValuePair> nameValuePairs;
-        HttpPost httppost;
-        httpclient=new DefaultHttpClient();
-        httppost= new HttpPost("http://192.168.1.7:80/dashboard/cobranzasmoviles/servicios/insertImagen.php"); // Url del Servidor
-        //Añadimos nuestros datos
-        nameValuePairs = new ArrayList<NameValuePair>(1);
-        nameValuePairs.add(new BasicNameValuePair("imagen",nombreImagen.getText().toString().trim()+".jpg"));
-
-        try {
-            httppost.setEntity(new UrlEncodedFormEntity(nameValuePairs));
-            httpclient.execute(httppost);
-            return true;
-        } catch (UnsupportedEncodingException e) {
-            // TODO Auto-generated catch block
-            e.printStackTrace();
-        } catch (ClientProtocolException e) {
-            // TODO Auto-generated catch block
-            e.printStackTrace();
-        } catch (IOException e) {
-            // TODO Auto-generated catch block
-            e.printStackTrace();
-        }
-        return false;
-    }
-    //Actualizacion
-    private void serverUpdate(){
-        if (file.exists())new ServerUpdate().execute();
-    }
-
-    class ServerUpdate extends AsyncTask<String,String,String> {
+    class ServerUpload extends AsyncTask<String,String,String> {
 
         ProgressDialog pDialog;
         @Override
         protected String doInBackground(String... arg0) {
             uploadFoto(foto);
-            if(onInsert())
-                runOnUiThread(new Runnable(){
-                    @Override
-                    public void run() {
-                        // TODO Auto-generated method stub
-                        Toast.makeText(MainActivity.this, "Éxito al subir la imagen",
-                                Toast.LENGTH_LONG).show();
-                    }
-                });
-            else
-                runOnUiThread(new Runnable(){
-                    @Override
-                    public void run() {
-                        // TODO Auto-generated method stub
-                        Toast.makeText(MainActivity.this, "Sin éxito al subir la imagen",
-                                Toast.LENGTH_LONG).show();
-                    }
-                });
             return null;
         }
         protected void onPreExecute() {
@@ -298,6 +251,14 @@ public class MainActivity extends AppCompatActivity {
         protected void onPostExecute(String result) {
             super.onPostExecute(result);
             pDialog.dismiss();
+            imagen.setImageBitmap(null);
+            nombreImagen.setText("");
+            nombreImagen.setEnabled(true);
+            if (ErrorConexionServidor == 1){
+                Toast.makeText(MainActivity.this, "No se pudo establecer conexion con el servidor.", Toast.LENGTH_SHORT).show();
+            }else{
+                Toast.makeText(MainActivity.this, "Imagen subida exitosamente.", Toast.LENGTH_SHORT).show();
+            }
         }
 
     }
